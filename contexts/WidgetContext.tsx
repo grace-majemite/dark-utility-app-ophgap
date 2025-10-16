@@ -115,7 +115,14 @@ export function WidgetProvider({ children }: { children: React.ReactNode }) {
   const verifyPin = async (pin: string): Promise<boolean> => {
     try {
       const storedPin = await SecureStore.getItemAsync('userPin');
-      return storedPin === pin;
+      console.log('Verifying PIN - Stored:', storedPin, 'Entered:', pin);
+      if (!storedPin) {
+        console.log('No PIN set yet');
+        return false;
+      }
+      const isValid = storedPin === pin;
+      console.log('PIN verification result:', isValid);
+      return isValid;
     } catch (error) {
       console.log('Error verifying PIN:', error);
       return false;
@@ -124,7 +131,9 @@ export function WidgetProvider({ children }: { children: React.ReactNode }) {
 
   const setPin = async (pin: string): Promise<void> => {
     try {
+      console.log('Setting PIN:', pin);
       await SecureStore.setItemAsync('userPin', pin);
+      console.log('PIN set successfully');
     } catch (error) {
       console.log('Error setting PIN:', error);
     }

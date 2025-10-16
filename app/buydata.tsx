@@ -573,6 +573,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
+    minHeight: 300,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -618,7 +619,7 @@ const styles = StyleSheet.create({
     color: colors.secondary,
   },
   pinContent: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   pinLabel: {
     fontSize: 14,
@@ -646,6 +647,7 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: 'row',
     gap: 12,
+    marginTop: 24,
   },
   modalButton: {
     flex: 1,
