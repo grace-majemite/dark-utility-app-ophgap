@@ -1,161 +1,304 @@
-import React from "react";
+import React, { useState } from "react";
 import { Stack, Link } from "expo-router";
-import { FlatList, Pressable, StyleSheet, View, Text, Alert, Platform } from "react-native";
+import { ScrollView, Pressable, StyleSheet, View, Text, Platform } from "react-native";
 import { IconSymbol } from "@/components/IconSymbol";
-import { GlassView } from "expo-glass-effect";
-import { useTheme } from "@react-navigation/native";
-
-const ICON_COLOR = "#007AFF";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { colors } from "@/styles/commonStyles";
 
 export default function HomeScreen() {
-  const theme = useTheme();
-  const modalDemos = [
+  const [walletBalance] = useState(5000);
+
+  const features = [
     {
-      title: "Standard Modal",
-      description: "Full screen modal presentation",
-      route: "/modal",
-      color: "#007AFF",
+      title: "Buy Data",
+      description: "Purchase mobile data plans",
+      icon: "wifi",
+      route: "/buydata",
+      color: colors.primary,
     },
     {
-      title: "Form Sheet",
-      description: "Bottom sheet with detents and grabber",
-      route: "/formsheet",
-      color: "#34C759",
+      title: "Fund Wallet",
+      description: "Add funds to your account",
+      icon: "creditcard",
+      route: "/fundwallet",
+      color: colors.secondary,
     },
     {
-      title: "Transparent Modal",
-      description: "Overlay without obscuring background",
-      route: "/transparent-modal",
-      color: "#FF9500",
-    }
+      title: "Betting",
+      description: "Place your bets and win",
+      icon: "dice",
+      route: "/betting",
+      color: colors.accent,
+    },
+    {
+      title: "TV Streaming",
+      description: "Watch your favorite shows",
+      icon: "tv",
+      route: "/tv",
+      color: colors.primary,
+    },
   ];
 
-  const renderModalDemo = ({ item }: { item: (typeof modalDemos)[0] }) => (
-    <GlassView style={[
-      styles.demoCard,
-      Platform.OS !== 'ios' && { backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }
-    ]} glassEffectStyle="regular">
-      <View style={[styles.demoIcon, { backgroundColor: item.color }]}>
-        <IconSymbol name="square.grid.3x3" color="white" size={24} />
-      </View>
-      <View style={styles.demoContent}>
-        <Text style={[styles.demoTitle, { color: theme.colors.text }]}>{item.title}</Text>
-        <Text style={[styles.demoDescription, { color: theme.dark ? '#98989D' : '#666' }]}>{item.description}</Text>
-      </View>
-      <Link href={item.route as any} asChild>
-        <Pressable>
-          <GlassView style={[
-            styles.tryButton,
-            Platform.OS !== 'ios' && { backgroundColor: theme.dark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)' }
-          ]} glassEffectStyle="clear">
-            <Text style={[styles.tryButtonText, { color: theme.colors.primary }]}>Try It</Text>
-          </GlassView>
-        </Pressable>
-      </Link>
-    </GlassView>
-  );
-
-  const renderHeaderRight = () => (
-    <Pressable
-      onPress={() => Alert.alert("Not Implemented", "This feature is not implemented yet")}
-      style={styles.headerButtonContainer}
-    >
-      <IconSymbol name="plus" color={theme.colors.primary} />
-    </Pressable>
-  );
-
-  const renderHeaderLeft = () => (
-    <Pressable
-      onPress={() => Alert.alert("Not Implemented", "This feature is not implemented yet")}
-      style={styles.headerButtonContainer}
-    >
-      <IconSymbol
-        name="gear"
-        color={theme.colors.primary}
-      />
-    </Pressable>
-  );
-
   return (
-    <>
-      {Platform.OS === 'ios' && (
-        <Stack.Screen
-          options={{
-            title: "Building the app...",
-            headerRight: renderHeaderRight,
-            headerLeft: renderHeaderLeft,
-          }}
-        />
-      )}
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <FlatList
-          data={modalDemos}
-          renderItem={renderModalDemo}
-          keyExtractor={(item) => item.route}
-          contentContainerStyle={[
-            styles.listContainer,
-            Platform.OS !== 'ios' && styles.listContainerWithTabBar
-          ]}
-          contentInsetAdjustmentBehavior="automatic"
-          showsVerticalScrollIndicator={false}
-        />
-      </View>
-    </>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <Stack.Screen
+        options={{
+          headerShown: false,
+        }}
+      />
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.contentContainer,
+          Platform.OS !== 'ios' && styles.contentContainerWithTabBar
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.greeting}>Welcome to Nova</Text>
+          <Text style={styles.subtitle}>Your Ultimate Utility Hub</Text>
+        </View>
+
+        {/* Wallet Card */}
+        <View style={styles.walletCard}>
+          <View style={styles.walletHeader}>
+            <IconSymbol name="wallet.pass" size={24} color={colors.secondary} />
+            <Text style={styles.walletLabel}>Wallet Balance</Text>
+          </View>
+          <Text style={styles.walletAmount}>₦{walletBalance.toLocaleString()}</Text>
+          <Text style={styles.walletSubtext}>Available for transactions</Text>
+        </View>
+
+        {/* Quick Stats */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>12</Text>
+            <Text style={styles.statLabel}>Transactions</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>3</Text>
+            <Text style={styles.statLabel}>Active Plans</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>₦2.5K</Text>
+            <Text style={styles.statLabel}>This Month</Text>
+          </View>
+        </View>
+
+        {/* Features Grid */}
+        <View style={styles.featuresSection}>
+          <Text style={styles.sectionTitle}>Services</Text>
+          <View style={styles.featuresGrid}>
+            {features.map((feature, index) => (
+              <Link href={feature.route as any} key={index} asChild>
+                <Pressable style={styles.featureCard}>
+                  <View style={[styles.featureIcon, { backgroundColor: feature.color }]}>
+                    <IconSymbol name={feature.icon as any} size={28} color={colors.text} />
+                  </View>
+                  <Text style={styles.featureTitle}>{feature.title}</Text>
+                  <Text style={styles.featureDescription}>{feature.description}</Text>
+                </Pressable>
+              </Link>
+            ))}
+          </View>
+        </View>
+
+        {/* Recent Transactions */}
+        <View style={styles.transactionsSection}>
+          <Text style={styles.sectionTitle}>Recent Transactions</Text>
+          <View style={styles.transactionItem}>
+            <View style={styles.transactionIcon}>
+              <IconSymbol name="arrow.down" size={16} color={colors.secondary} />
+            </View>
+            <View style={styles.transactionDetails}>
+              <Text style={styles.transactionTitle}>Data Purchase</Text>
+              <Text style={styles.transactionDate}>Today at 2:30 PM</Text>
+            </View>
+            <Text style={styles.transactionAmount}>-₦500</Text>
+          </View>
+          <View style={styles.transactionItem}>
+            <View style={styles.transactionIcon}>
+              <IconSymbol name="arrow.up" size={16} color={colors.primary} />
+            </View>
+            <View style={styles.transactionDetails}>
+              <Text style={styles.transactionTitle}>Wallet Funded</Text>
+              <Text style={styles.transactionDate}>Yesterday at 5:15 PM</Text>
+            </View>
+            <Text style={[styles.transactionAmount, { color: colors.secondary }]}>+₦5000</Text>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // backgroundColor handled dynamically
+    backgroundColor: colors.background,
   },
-  listContainer: {
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-  },
-  listContainerWithTabBar: {
-    paddingBottom: 100, // Extra padding for floating tab bar
-  },
-  demoCard: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  demoIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  demoContent: {
+  scrollView: {
     flex: 1,
   },
-  demoTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 4,
-    // color handled dynamically
-  },
-  demoDescription: {
-    fontSize: 14,
-    lineHeight: 18,
-    // color handled dynamically
-  },
-  headerButtonContainer: {
-    padding: 6,
-  },
-  tryButton: {
+  contentContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
+    paddingVertical: 20,
   },
-  tryButtonText: {
+  contentContainerWithTabBar: {
+    paddingBottom: 100,
+  },
+  header: {
+    marginBottom: 24,
+  },
+  greeting: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  walletCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.highlight,
+    boxShadow: '0px 4px 12px rgba(187, 134, 252, 0.15)',
+    elevation: 4,
+  },
+  walletHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  walletLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginLeft: 8,
+  },
+  walletAmount: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  walletSubtext: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.highlight,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.primary,
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  featuresSection: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  featuresGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  featureCard: {
+    width: '48%',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.highlight,
+  },
+  featureIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  featureTitle: {
     fontSize: 14,
     fontWeight: '600',
-    // color handled dynamically
+    color: colors.text,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  featureDescription: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  transactionsSection: {
+    marginBottom: 24,
+  },
+  transactionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.highlight,
+  },
+  transactionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.highlight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  transactionDetails: {
+    flex: 1,
+  },
+  transactionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  transactionDate: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  transactionAmount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.accent,
   },
 });
