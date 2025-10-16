@@ -1,12 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Stack, Link } from "expo-router";
 import { ScrollView, Pressable, StyleSheet, View, Text, Platform } from "react-native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "@/styles/commonStyles";
+import { useWidget } from "@/contexts/WidgetContext";
 
 export default function HomeScreen() {
-  const [walletBalance] = useState(5000);
+  const { walletBalance, transactions } = useWidget();
+  const [displayBalance, setDisplayBalance] = useState(walletBalance);
+
+  useEffect(() => {
+    setDisplayBalance(walletBalance);
+  }, [walletBalance]);
 
   const features = [
     {
@@ -66,7 +72,7 @@ export default function HomeScreen() {
             <IconSymbol name="wallet.pass" size={24} color={colors.secondary} />
             <Text style={styles.walletLabel}>Wallet Balance</Text>
           </View>
-          <Text style={styles.walletAmount}>₦{walletBalance.toLocaleString()}</Text>
+          <Text style={styles.walletAmount}>₦{displayBalance.toLocaleString()}</Text>
           <Text style={styles.walletSubtext}>Available for transactions</Text>
         </View>
 
@@ -107,26 +113,39 @@ export default function HomeScreen() {
         {/* Recent Transactions */}
         <View style={styles.transactionsSection}>
           <Text style={styles.sectionTitle}>Recent Transactions</Text>
-          <View style={styles.transactionItem}>
-            <View style={styles.transactionIcon}>
-              <IconSymbol name="arrow.down" size={16} color={colors.secondary} />
+          {transactions.length > 0 ? (
+            transactions.slice(0, 5).map((transaction) => (
+              <View key={transaction.id} style={styles.transactionItem}>
+                <View style={styles.transactionIcon}>
+                  <IconSymbol
+                    name={transaction.type === 'debit' ? 'arrow.down' : 'arrow.up'}
+                    size={16}
+                    color={transaction.type === 'debit' ? colors.accent : colors.secondary}
+                  />
+                </View>
+                <View style={styles.transactionDetails}>
+                  <Text style={styles.transactionTitle}>{transaction.description}</Text>
+                  <Text style={styles.transactionDate}>
+                    {new Date(transaction.timestamp).toLocaleDateString()}
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.transactionAmount,
+                    {
+                      color: transaction.type === 'debit' ? colors.accent : colors.secondary,
+                    },
+                  ]}
+                >
+                  {transaction.type === 'debit' ? '-' : '+'}₦{transaction.amount}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>No transactions yet</Text>
             </View>
-            <View style={styles.transactionDetails}>
-              <Text style={styles.transactionTitle}>Data Purchase</Text>
-              <Text style={styles.transactionDate}>Today at 2:30 PM</Text>
-            </View>
-            <Text style={styles.transactionAmount}>-₦500</Text>
-          </View>
-          <View style={styles.transactionItem}>
-            <View style={styles.transactionIcon}>
-              <IconSymbol name="arrow.up" size={16} color={colors.primary} />
-            </View>
-            <View style={styles.transactionDetails}>
-              <Text style={styles.transactionTitle}>Wallet Funded</Text>
-              <Text style={styles.transactionDate}>Yesterday at 5:15 PM</Text>
-            </View>
-            <Text style={[styles.transactionAmount, { color: colors.secondary }]}>+₦5000</Text>
-          </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -300,5 +319,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.accent,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: colors.textSecondary,
   },
 });

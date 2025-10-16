@@ -1,14 +1,18 @@
 
 import { router } from 'expo-router';
-import { StyleSheet, Text, View, Pressable, ScrollView, Platform, TextInput } from 'react-native';
+import { StyleSheet, Text, View, Pressable, ScrollView, Platform, TextInput, Modal, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
 import { useState } from 'react';
+import { useWidget } from '@/contexts/WidgetContext';
 
 export default function FundWalletScreen() {
+  const { walletBalance, updateWalletBalance, addTransaction } = useWidget();
   const [amount, setAmount] = useState('');
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [processing, setProcessing] = useState(false);
 
   const fundingMethods = [
     { id: 'card', name: 'Debit Card', icon: 'creditcard', description: 'Visa, Mastercard' },
@@ -24,9 +28,46 @@ export default function FundWalletScreen() {
       alert("Please select an amount and payment method");
       return;
     }
-    alert(`Processing ₦${amount} via ${fundingMethods.find(m => m.id === selectedMethod)?.name}`);
-    setAmount('');
-    setSelectedMethod(null);
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmFund = async () => {
+    setProcessing(true);
+    try {
+      const fundAmount = parseFloat(amount);
+      if (isNaN(fundAmount) || fundAmount <= 0) {
+        alert('Invalid amount');
+        setProcessing(false);
+        return;
+      }
+
+      // Simulate payment processing
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      const success = await updateWalletBalance(fundAmount);
+      if (success) {
+        addTransaction({
+          id: 'txn_' + Date.now(),
+          type: 'credit',
+          amount: fundAmount,
+          description: `Wallet Funded via ${fundingMethods.find(m => m.id === selectedMethod)?.name}`,
+          timestamp: Date.now(),
+          status: 'completed',
+        });
+
+        setShowConfirmation(false);
+        setAmount('');
+        setSelectedMethod(null);
+        alert(`Successfully funded wallet with ₦${fundAmount}`);
+      } else {
+        alert('Failed to fund wallet');
+      }
+    } catch (error) {
+      console.log('Error funding wallet:', error);
+      alert('An error occurred while funding wallet');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   return (
@@ -47,6 +88,11 @@ export default function FundWalletScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.balanceCard}>
+          <Text style={styles.balanceLabel}>Current Balance</Text>
+          <Text style={styles.balanceAmount}>₦{walletBalance.toLocaleString()}</Text>
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Enter Amount</Text>
           <View style={styles.amountInputContainer}>
@@ -121,34 +167,66 @@ export default function FundWalletScreen() {
             (!amount || !selectedMethod) && styles.fundButtonDisabled
           ]}
           onPress={handleFund}
+          disabled={!amount || !selectedMethod}
         >
           <Text style={styles.fundButtonText}>Fund Wallet</Text>
         </Pressable>
+      </ScrollView>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Transactions</Text>
-          <View style={styles.transactionItem}>
-            <View style={styles.transactionIcon}>
-              <IconSymbol name="arrow.up" size={16} color={colors.secondary} />
+      {/* Confirmation Modal */}
+      <Modal
+        visible={showConfirmation}
+        transparent
+        animationType="slide"
+        onRequestClose={() => !processing && setShowConfirmation(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmationModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Confirm Funding</Text>
+              {!processing && (
+                <Pressable onPress={() => setShowConfirmation(false)}>
+                  <IconSymbol name="xmark" size={24} color={colors.text} />
+                </Pressable>
+              )}
             </View>
-            <View style={styles.transactionDetails}>
-              <Text style={styles.transactionTitle}>Wallet Funded</Text>
-              <Text style={styles.transactionDate}>2 days ago</Text>
+
+            <View style={styles.confirmationContent}>
+              <View style={styles.confirmationItem}>
+                <Text style={styles.confirmationLabel}>Amount</Text>
+                <Text style={styles.confirmationValueHighlight}>₦{amount}</Text>
+              </View>
+              <View style={styles.confirmationItem}>
+                <Text style={styles.confirmationLabel}>Payment Method</Text>
+                <Text style={styles.confirmationValue}>
+                  {fundingMethods.find(m => m.id === selectedMethod)?.name}
+                </Text>
+              </View>
             </View>
-            <Text style={styles.transactionAmount}>+₦5000</Text>
-          </View>
-          <View style={styles.transactionItem}>
-            <View style={styles.transactionIcon}>
-              <IconSymbol name="arrow.up" size={16} color={colors.secondary} />
+
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowConfirmation(false)}
+                disabled={processing}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleConfirmFund}
+                disabled={processing}
+              >
+                {processing ? (
+                  <ActivityIndicator color={colors.background} />
+                ) : (
+                  <Text style={styles.confirmButtonText}>Confirm</Text>
+                )}
+              </Pressable>
             </View>
-            <View style={styles.transactionDetails}>
-              <Text style={styles.transactionTitle}>Wallet Funded</Text>
-              <Text style={styles.transactionDate}>1 week ago</Text>
-            </View>
-            <Text style={styles.transactionAmount}>+₦2500</Text>
           </View>
         </View>
-      </ScrollView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -184,6 +262,24 @@ const styles = StyleSheet.create({
   },
   contentContainerWithTabBar: {
     paddingBottom: 100,
+  },
+  balanceCard: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.highlight,
+  },
+  balanceLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  balanceAmount: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: colors.secondary,
   },
   section: {
     marginBottom: 24,
@@ -336,5 +432,78 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.secondary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'flex-end',
+  },
+  confirmationModal: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  confirmationContent: {
+    marginBottom: 20,
+  },
+  confirmationItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.highlight,
+  },
+  confirmationLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  confirmationValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  confirmationValueHighlight: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.secondary,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: colors.highlight,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  confirmButton: {
+    backgroundColor: colors.primary,
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.background,
   },
 });

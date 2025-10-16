@@ -1,14 +1,19 @@
 
 import { router } from 'expo-router';
-import { StyleSheet, Text, View, Pressable, ScrollView, Platform } from 'react-native';
+import { StyleSheet, Text, View, Pressable, ScrollView, Platform, Modal, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
 import { useState } from 'react';
+import { useWidget } from '@/contexts/WidgetContext';
+
+const BET_AMOUNT = 100;
 
 export default function BettingScreen() {
+  const { walletBalance, updateWalletBalance, addTransaction } = useWidget();
   const [selectedBet, setSelectedBet] = useState<number | null>(null);
-  const [walletBalance] = useState(5000);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [processing, setProcessing] = useState(false);
 
   const bets = [
     { id: 1, match: 'Man United vs Liverpool', odds: 1.85, prediction: 'Home Win', potential: 185 },
@@ -24,12 +29,48 @@ export default function BettingScreen() {
       alert("Please select a bet");
       return;
     }
-    const bet = bets.find(b => b.id === selectedBet);
-    if (bet && walletBalance >= 100) {
-      alert(`Bet placed on ${bet.match}\nPotential win: ₦${bet.potential}`);
-      setSelectedBet(null);
-    } else {
+    if (walletBalance < BET_AMOUNT) {
       alert("Insufficient wallet balance");
+      return;
+    }
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmBet = async () => {
+    setProcessing(true);
+    try {
+      const bet = bets.find(b => b.id === selectedBet);
+      if (!bet) {
+        alert('Bet not found');
+        setProcessing(false);
+        return;
+      }
+
+      // Simulate bet processing
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const success = await updateWalletBalance(-BET_AMOUNT);
+      if (success) {
+        addTransaction({
+          id: 'txn_' + Date.now(),
+          type: 'debit',
+          amount: BET_AMOUNT,
+          description: `Bet placed on ${bet.match}`,
+          timestamp: Date.now(),
+          status: 'completed',
+        });
+
+        setShowConfirmation(false);
+        setSelectedBet(null);
+        alert(`Bet placed successfully!\nMatch: ${bet.match}\nPotential win: ₦${bet.potential}`);
+      } else {
+        alert('Failed to place bet');
+      }
+    } catch (error) {
+      console.log('Error placing bet:', error);
+      alert('An error occurred while placing bet');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -101,11 +142,12 @@ export default function BettingScreen() {
         <Pressable
           style={[
             styles.placeBetButton,
-            selectedBet === null && styles.placeBetButtonDisabled
+            (selectedBet === null || walletBalance < BET_AMOUNT) && styles.placeBetButtonDisabled
           ]}
           onPress={handlePlaceBet}
+          disabled={selectedBet === null || walletBalance < BET_AMOUNT}
         >
-          <Text style={styles.placeBetButtonText}>Place Bet (₦100)</Text>
+          <Text style={styles.placeBetButtonText}>Place Bet (₦{BET_AMOUNT})</Text>
         </Pressable>
 
         <View style={styles.tipsSection}>
@@ -120,6 +162,73 @@ export default function BettingScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Confirmation Modal */}
+      <Modal
+        visible={showConfirmation}
+        transparent
+        animationType="slide"
+        onRequestClose={() => !processing && setShowConfirmation(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmationModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Confirm Bet</Text>
+              {!processing && (
+                <Pressable onPress={() => setShowConfirmation(false)}>
+                  <IconSymbol name="xmark" size={24} color={colors.text} />
+                </Pressable>
+              )}
+            </View>
+
+            {selectedBet && bets.find(b => b.id === selectedBet) && (
+              <View style={styles.confirmationContent}>
+                <View style={styles.confirmationItem}>
+                  <Text style={styles.confirmationLabel}>Match</Text>
+                  <Text style={styles.confirmationValue}>{bets.find(b => b.id === selectedBet)?.match}</Text>
+                </View>
+                <View style={styles.confirmationItem}>
+                  <Text style={styles.confirmationLabel}>Prediction</Text>
+                  <Text style={styles.confirmationValue}>{bets.find(b => b.id === selectedBet)?.prediction}</Text>
+                </View>
+                <View style={styles.confirmationItem}>
+                  <Text style={styles.confirmationLabel}>Odds</Text>
+                  <Text style={styles.confirmationValue}>{bets.find(b => b.id === selectedBet)?.odds.toFixed(2)}</Text>
+                </View>
+                <View style={[styles.confirmationItem, styles.confirmationItemHighlight]}>
+                  <Text style={styles.confirmationLabel}>Bet Amount</Text>
+                  <Text style={styles.confirmationValueHighlight}>₦{BET_AMOUNT}</Text>
+                </View>
+                <View style={[styles.confirmationItem, styles.confirmationItemHighlight]}>
+                  <Text style={styles.confirmationLabel}>Potential Win</Text>
+                  <Text style={styles.confirmationValueHighlight}>₦{bets.find(b => b.id === selectedBet)?.potential}</Text>
+                </View>
+              </View>
+            )}
+
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowConfirmation(false)}
+                disabled={processing}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleConfirmBet}
+                disabled={processing}
+              >
+                {processing ? (
+                  <ActivityIndicator color={colors.background} />
+                ) : (
+                  <Text style={styles.confirmButtonText}>Confirm Bet</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -275,5 +384,85 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginLeft: 12,
     flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'flex-end',
+  },
+  confirmationModal: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  confirmationContent: {
+    marginBottom: 20,
+  },
+  confirmationItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.highlight,
+  },
+  confirmationItemHighlight: {
+    backgroundColor: colors.highlight,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderBottomWidth: 0,
+    marginTop: 8,
+  },
+  confirmationLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  confirmationValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  confirmationValueHighlight: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.accent,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: colors.highlight,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  confirmButton: {
+    backgroundColor: colors.accent,
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.background,
   },
 });
